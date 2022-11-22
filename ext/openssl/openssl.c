@@ -4535,7 +4535,10 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 	}
 
 	/* custom params not supported with SM2, SKIP */
-	if (OPENSSL_strcasecmp(Z_STRVAL_P(curve_name_zv), "SM2") != 0){
+	if (!curve_name_zv ||
+		Z_TYPE_P(curve_name_zv) != IS_STRING &&
+		Z_STRLEN_P(curve_name_zv) == 0 ||
+		OPENSSL_strcasecmp(Z_STRVAL_P(curve_name_zv), "SM2") != 0){
 		OPENSSL_PKEY_SET_BN(data, d);
 		OPENSSL_PKEY_SET_BN(data, x);
 		OPENSSL_PKEY_SET_BN(data, y);
