@@ -4491,7 +4491,10 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_EC_B, b);
 		OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_EC_ORDER, order);
 		
+		point_g = EC_POINT_new(group);
+		
 		if (generator_zv && Z_TYPE_P(generator_zv) == IS_STRING && Z_STRLEN_P(generator_zv) > 0) {
+			EC_POINT_oct2point(group, point_g, Z_STRVAL_P(generator_zv), Z_STRLEN_P(generator_zv), bctx);
 			OSSL_PARAM_BLD_push_octet_string(
 				bld, OSSL_PKEY_PARAM_EC_GENERATOR, Z_STRVAL_P(generator_zv), Z_STRLEN_P(generator_zv));
 		} else if(g_x && g_y) {
@@ -4499,17 +4502,17 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 				goto cleanup;
 			}
 
-			point_g = EC_POINT_new(group);
 			if (!EC_POINT_set_affine_coordinates(group, point_g, g_x, g_y, bctx)) {
 				goto cleanup;
 			}
 
 			size_t point_g_buf_len =
-				EC_POINT_point2buf(group, point_g, POINT_CONVERSION_UNCOMPRESSED, &point_g_buf, bctx);
+				EC_POINT_point2buf(group, point_g, POINT_CONVERSION_COMPRESSED, &point_g_buf, bctx);
 			if (!point_g_buf_len) {
 				goto cleanup;
 			}
 
+			EC_GROUP_set_generator(group, point_g, order, BN_value_one());
 			OSSL_PARAM_BLD_push_octet_string(bld, OSSL_PKEY_PARAM_EC_GENERATOR, point_g_buf, point_g_buf_len);
 		} else {
 			php_error_docref(
