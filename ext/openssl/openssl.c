@@ -4452,6 +4452,7 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 	unsigned char *point_q_buf = NULL;
 	EVP_PKEY *param_key = NULL, *pkey = NULL;
 	EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+	BN_CTX *bctx = BN_CTX_new();
 	OSSL_PARAM *params = NULL;
 	OSSL_PARAM_BLD *bld = OSSL_PARAM_BLD_new();
 	zval *curve_name_zv = zend_hash_str_find(Z_ARRVAL_P(data), "curve_name", sizeof("curve_name") - 1);
@@ -4494,17 +4495,17 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 			OSSL_PARAM_BLD_push_octet_string(
 				bld, OSSL_PKEY_PARAM_EC_GENERATOR, Z_STRVAL_P(generator_zv), Z_STRLEN_P(generator_zv));
 		} else if(g_x && g_y) {
-			if(!(group = EC_GROUP_new_curve_GFp(p, a, b, NULL))) {
+			if(!(group = EC_GROUP_new_curve_GFp(p, a, b, bctx))) {
 				goto cleanup;
 			}
 
 			point_g = EC_POINT_new(group);
-			if (!EC_POINT_set_affine_coordinates(group, point_g, g_x, g_y, NULL)) {
+			if (!EC_POINT_set_affine_coordinates(group, point_g, g_x, g_y, bctx)) {
 				goto cleanup;
 			}
 
 			size_t point_g_buf_len =
-				EC_POINT_point2buf(group, point_g, POINT_CONVERSION_UNCOMPRESSED, &point_g_buf, NULL);
+				EC_POINT_point2buf(group, point_g, POINT_CONVERSION_UNCOMPRESSED, &point_g_buf, bctx);
 			if (!point_g_buf_len) {
 				goto cleanup;
 			}
@@ -4547,20 +4548,20 @@ static EVP_PKEY *php_openssl_pkey_init_ec(zval *data, bool *is_private) {
 			OSSL_PARAM_BLD_push_BN(bld, OSSL_PKEY_PARAM_PRIV_KEY, d);
 
 			point_q = EC_POINT_new(group);
-			if (!point_q || !EC_POINT_mul(group, point_q, d, NULL, NULL, NULL)) {
+			if (!point_q || !EC_POINT_mul(group, point_q, d, NULL, NULL, bctx)) {
 				goto cleanup;
 			}
 		} else if (x && y) {
 			/* OpenSSL does not allow setting EC_PUB_X/EC_PUB_Y, so convert to encoded format. */
 			point_q = EC_POINT_new(group);
-			if (!point_q || !EC_POINT_set_affine_coordinates(group, point_q, x, y, NULL)) {
+			if (!point_q || !EC_POINT_set_affine_coordinates(group, point_q, x, y, bctx)) {
 				goto cleanup;
 			}
 		}
 
 		if (point_q) {
 			size_t point_q_buf_len =
-				EC_POINT_point2buf(group, point_q, POINT_CONVERSION_COMPRESSED, &point_q_buf, NULL);
+				EC_POINT_point2buf(group, point_q, POINT_CONVERSION_COMPRESSED, &point_q_buf, bctx);
 			if (!point_q_buf_len) {
 				goto cleanup;
 			}
@@ -4601,6 +4602,7 @@ cleanup:
 	php_openssl_store_errors();
 	EVP_PKEY_free(param_key);
 	EVP_PKEY_CTX_free(ctx);
+	BN_CTX_free(bctx);
 	OSSL_PARAM_free(params);
 	OSSL_PARAM_BLD_free(bld);
 	EC_GROUP_free(group);
