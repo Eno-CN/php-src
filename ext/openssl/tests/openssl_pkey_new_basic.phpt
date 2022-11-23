@@ -2,6 +2,10 @@
 openssl_pkey_new() basic usage tests
 --EXTENSIONS--
 openssl
+--SKIPIF--
+<?php
+if (!defined('OPENSSL_KEYTYPE_EC')) die("skip no EC available");
+?>
 --FILE--
 <?php
 function openssl_pkey_test_cmp($expected, $bin_key) {
