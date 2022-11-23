@@ -100,6 +100,74 @@ openssl_pkey_test_cmp($phex, $dh_details['p']);
 var_dump($dh_details['g']);
 var_dump(strlen($dh_details['pub_key']));
 var_dump(strlen($dh_details['priv_key']));
+
+// EC - generate keypair with curve_name
+$curve_name = 'prime256v1';
+$ec = openssl_pkey_new(array(
+    'ec'=> array('curve_name' => $curve_name))
+);
+$details = openssl_pkey_get_details($ec);
+$ec_details = $details['ec'];
+var_dump($curve_name === $ec_details['curve_name']);
+var_dump(strlen($ec_details['x']));
+var_dump(strlen($ec_details['y']));
+var_dump(strlen($ec_details['d']));
+
+// EC - generate keypair with custom params (SM2 curve)
+$p = hex2bin('FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF');
+$a = hex2bin('FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC');
+$b = hex2bin('28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93');
+$order = hex2bin('FFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123');
+$g_x = hex2bin('32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7');
+$g_y = hex2bin('BC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0');
+
+$ec = openssl_pkey_new(array(
+    'ec'=> array(
+        'p' => $p,
+        'a' => $a,
+        'b' => $b,
+        'order' => $order,
+        'g_x' => $g_x,
+        'g_y' => $g_y,
+    )
+));
+
+$details = openssl_pkey_get_details($ec);
+$ec_details = $details['ec'];
+var_dump($ec_details['curve_name'] === 'SM2');
+var_dump(strlen($ec_details['x']));
+var_dump(strlen($ec_details['y']));
+var_dump(strlen($ec_details['d']));
+
+// EC - generate keypair from priv_key(d) with custom params (ECDSA curve)
+$d = hex2bin('8D0AC65AAEA0D6B96254C65817D4A143A9E7A03876F1A37D');
+$x = hex2bin('98E07AAD50C31F9189EBE6B8B5C70E5DEE59D7A8BC344CC6');
+$y = hex2bin('6109D3D96E52D0867B9D05D72D07BE5876A3D973E0E96792');
+$p = hex2bin('BDB6F4FE3E8B1D9E0DA8C0D46F4C318CEFE4AFE3B6B8551F');
+$a = hex2bin('BB8E5E8FBC115E139FE6A814FE48AAA6F0ADA1AA5DF91985');
+$b = hex2bin('1854BEBDC31B21B7AEFC80AB0ECD10D5B1B3308E6DBF11C1');
+$g_x = hex2bin('4AD5F7048DE709AD51236DE65E4D4B482C836DC6E4106640');
+$g_y = hex2bin('02BB3A02D4AAADACAE24817A4CA3A1B014B5270432DB27D2');
+$order = hex2bin('BDB6F4FE3E8B1D9E0DA8C0D40FC962195DFAE76F56564677');
+
+$ec = openssl_pkey_new(array(
+    'ec'=> array(
+        'p' => $p,
+        'a' => $a,
+        'b' => $b,
+        'order' => $order,
+        'g_x' => $g_x,
+        'g_y' => $g_y,
+        'd' => $d,
+    )
+));
+
+$details = openssl_pkey_get_details($ec);
+$ec_details = $details['ec'];
+var_dump($ec_details['x'] === $x);
+var_dump($ec_details['y'] === $y);
+var_dump($ec_details['d'] === $d);
+
 ?>
 --EXPECTF--
 int(0)
@@ -120,3 +188,14 @@ int(0)
 string(1) "2"
 int(%d)
 int(%d)
+bool(true)
+int(%d)
+int(%d)
+int(%d)
+bool(true)
+int(%d)
+int(%d)
+int(%d)
+bool(true)
+bool(true)
+bool(true)
